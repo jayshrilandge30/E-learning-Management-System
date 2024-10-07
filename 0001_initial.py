@@ -2,6 +2,7 @@
 
 from django.db import migrations, models
 import django.db.models.deletion
+import froala_editor.fields
 
 
 class Migration(migrations.Migration):
@@ -9,34 +10,136 @@ class Migration(migrations.Migration):
     initial = True
 
     dependencies = [
-        ('main', '0001_initial'),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='StudentDiscussion',
+            name='Course',
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('content', models.TextField(max_length=1600)),
-                ('sent_at', models.DateTimeField(auto_now_add=True)),
-                ('course', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='discussions', to='main.course')),
-                ('sent_by', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='discussions', to='main.student')),
+                ('code', models.IntegerField(primary_key=True, serialize=False)),
+                ('name', models.CharField(max_length=255, unique=True)),
+                ('studentKey', models.IntegerField(unique=True)),
+                ('facultyKey', models.IntegerField(unique=True)),
             ],
             options={
-                'ordering': ['-sent_at'],
+                'verbose_name_plural': 'Courses',
             },
         ),
         migrations.CreateModel(
-            name='FacultyDiscussion',
+            name='Department',
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('content', models.TextField(max_length=1600)),
-                ('sent_at', models.DateTimeField(auto_now_add=True)),
-                ('course', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='courseDiscussions', to='main.course')),
-                ('sent_by', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='courseDiscussions', to='main.faculty')),
+                ('department_id', models.IntegerField(primary_key=True, serialize=False)),
+                ('name', models.CharField(max_length=100)),
+                ('description', models.TextField(blank=True, null=True)),
             ],
             options={
-                'ordering': ['-sent_at'],
+                'verbose_name_plural': 'Departments',
             },
+        ),
+        migrations.CreateModel(
+            name='Student',
+            fields=[
+                ('student_id', models.IntegerField(primary_key=True, serialize=False)),
+                ('name', models.CharField(max_length=100)),
+                ('email', models.EmailField(blank=True, max_length=100, null=True)),
+                ('password', models.CharField(max_length=255)),
+                ('role', models.CharField(blank=True, default='Student', max_length=100)),
+                ('photo', models.ImageField(blank=True, default='profile_pics/default_student.png', upload_to='profile_pics')),
+                ('course', models.ManyToManyField(blank=True, related_name='students', to='main.course')),
+                ('department', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='students', to='main.department')),
+            ],
+            options={
+                'verbose_name_plural': 'Students',
+            },
+        ),
+        migrations.CreateModel(
+            name='Material',
+            fields=[
+                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+                ('description', models.TextField(max_length=2000)),
+                ('datetime', models.DateTimeField(auto_now_add=True)),
+                ('file', models.FileField(blank=True, null=True, upload_to='materials/')),
+                ('course_code', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='main.course')),
+            ],
+            options={
+                'verbose_name_plural': 'Materials',
+                'ordering': ['-datetime'],
+            },
+        ),
+        migrations.CreateModel(
+            name='Faculty',
+            fields=[
+                ('faculty_id', models.IntegerField(primary_key=True, serialize=False)),
+                ('name', models.CharField(max_length=100)),
+                ('email', models.EmailField(blank=True, max_length=100, null=True)),
+                ('password', models.CharField(max_length=255)),
+                ('role', models.CharField(blank=True, default='Faculty', max_length=100)),
+                ('photo', models.ImageField(blank=True, default='profile_pics/default_faculty.png', upload_to='profile_pics')),
+                ('department', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='faculty', to='main.department')),
+            ],
+            options={
+                'verbose_name_plural': 'Faculty',
+            },
+        ),
+        migrations.AddField(
+            model_name='course',
+            name='department',
+            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='courses', to='main.department'),
+        ),
+        migrations.AddField(
+            model_name='course',
+            name='faculty',
+            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, to='main.faculty'),
+        ),
+        migrations.CreateModel(
+            name='Assignment',
+            fields=[
+                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+                ('title', models.CharField(max_length=255)),
+                ('description', models.TextField()),
+                ('datetime', models.DateTimeField(auto_now_add=True)),
+                ('deadline', models.DateTimeField()),
+                ('file', models.FileField(blank=True, null=True, upload_to='assignments/')),
+                ('marks', models.DecimalField(decimal_places=2, max_digits=6)),
+                ('course_code', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='main.course')),
+            ],
+            options={
+                'verbose_name_plural': 'Assignments',
+                'ordering': ['-datetime'],
+            },
+        ),
+        migrations.CreateModel(
+            name='Announcement',
+            fields=[
+                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+                ('datetime', models.DateTimeField(auto_now_add=True)),
+                ('description', froala_editor.fields.FroalaField()),
+                ('course_code', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='main.course')),
+            ],
+            options={
+                'verbose_name_plural': 'Announcements',
+                'ordering': ['-datetime'],
+            },
+        ),
+        migrations.CreateModel(
+            name='Submission',
+            fields=[
+                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+                ('file', models.FileField(null=True, upload_to='submissions/')),
+                ('datetime', models.DateTimeField(auto_now_add=True)),
+                ('marks', models.DecimalField(blank=True, decimal_places=2, max_digits=6, null=True)),
+                ('status', models.CharField(blank=True, max_length=100, null=True)),
+                ('assignment', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='main.assignment')),
+                ('student', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='main.student')),
+            ],
+            options={
+                'verbose_name_plural': 'Submissions',
+                'ordering': ['datetime'],
+                'unique_together': {('assignment', 'student')},
+            },
+        ),
+        migrations.AlterUniqueTogether(
+            name='course',
+            unique_together={('code', 'department', 'name')},
         ),
     ]

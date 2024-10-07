@@ -1,30 +1,54 @@
 from django import forms
-from .models import StudentDiscussion, FacultyDiscussion
+from froala_editor.widgets import FroalaEditor
+from .models import Announcement, Assignment, Material
 
 
-class StudentDiscussionForm(forms.ModelForm):
+class AnnouncementForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
-        super(StudentDiscussionForm, self).__init__(*args, **kwargs)
-        self.fields['content'].required = True
-        self.fields['content'].label = ''
+        super(AnnouncementForm, self).__init__(*args, **kwargs)
+        self.fields['description'].required = True
+        self.fields['description'].label = ''
 
     class Meta:
-        model = StudentDiscussion
-        fields = ['content']
+        model = Announcement
+        fields = ['description']
         widgets = {
-            'content': forms.TextInput(attrs={'class': 'form-control', 'id': 'content', 'name': 'content', 'placeholder': 'Write message...', 'type': 'text'}),
+            'description': FroalaEditor(),
         }
 
 
-class FacultyDiscussionForm(forms.ModelForm):
+class AssignmentForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
-        super(FacultyDiscussionForm, self).__init__(*args, **kwargs)
-        self.fields['content'].required = True
-        self.fields['content'].label = ''
+        super(AssignmentForm, self).__init__(*args, **kwargs)
+        for field in self.fields.values():
+            field.required = True
+            field.label = ''
+        self.fields['file'].required = False
 
     class Meta:
-        model = FacultyDiscussion
-        fields = ['content']
+        model = Assignment
+        fields = ('title', 'description', 'deadline', 'marks', 'file')
         widgets = {
-            'content': forms.TextInput(attrs={'class': 'form-control', 'id': 'content', 'name': 'content', 'placeholder': 'Write message...', 'type': 'text'}),
+            'description': FroalaEditor(),
+            'title': forms.TextInput(attrs={'class': 'form-control mt-1', 'id': 'title', 'name': 'title', 'placeholder': 'Title'}),
+            'deadline': forms.DateTimeInput(attrs={'class': 'form-control mt-1', 'id': 'deadline', 'name': 'deadline', 'type': 'datetime-local'}),
+            'marks': forms.NumberInput(attrs={'class': 'form-control mt-1', 'id': 'marks', 'name': 'marks', 'placeholder': 'Marks'}),
+            'file': forms.FileInput(attrs={'class': 'form-control mt-1', 'id': 'file', 'name': 'file', 'aria-describedby': 'file', 'aria-label': 'Upload'}),
+        }
+
+
+class MaterialForm(forms.ModelForm):
+    def __init__(self, *args, **kwargs):
+        super(MaterialForm, self).__init__(*args, **kwargs)
+        for field in self.fields.values():
+            field.required = True
+            field.label = ""
+        self.fields['file'].required = False
+
+    class Meta:
+        model = Material
+        fields = ('description', 'file')
+        widgets = {
+            'description': FroalaEditor(),
+            'file': forms.FileInput(attrs={'class': 'form-control', 'id': 'file', 'name': 'file', 'aria-describedby': 'file', 'aria-label': 'Upload'}),
         }
