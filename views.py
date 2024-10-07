@@ -1,106 +1,79 @@
-from django.shortcuts import redirect, render
-from discussion.models import FacultyDiscussion, StudentDiscussion
-from main.models import Student, Faculty, Course
-from main.views import is_faculty_authorised, is_student_authorised
-from itertools import chain
-from .forms import StudentDiscussionForm, FacultyDiscussionForm
+from django.contrib import messages
+from django.shortcuts import render, redirect
+from . models import Attendance
+from main.models import Student, Course, Faculty
+from main.views import is_faculty_authorised
 
 
-# Create your views here.
+def attendance(request, code):
+    if is_faculty_authorised(request, code):
+        course = Course.objects.get(code=code)
+        students = Student.objects.filter(course__code=code)
+
+        return render(request, 'attendance/attendance.html', {'students': students, 'course': course, 'faculty': Faculty.objects.get(course=course)})
 
 
-''' We have two different user models.
-    That's why we are filtering the discussions based on the user type and then combining them.'''
-
-
-def context_list(course):
-    try:
-        studentDis = StudentDiscussion.objects.filter(course=course)
-        facultyDis = FacultyDiscussion.objects.filter(course=course)
-        discussions = list(chain(studentDis, facultyDis))
-        discussions.sort(key=lambda x: x.sent_at, reverse=True)
-
-        for dis in discussions:
-            if dis.__class__.__name__ == 'StudentDiscussion':
-                dis.author = Student.objects.get(student_id=dis.sent_by_id)
+def createRecord(request, code):
+    if is_faculty_authorised(request, code):
+        if request.method == 'POST':
+            date = request.POST['dateCreate']
+            course = Course.objects.get(code=code)
+            students = Student.objects.filter(course__code=code)
+            # check if attendance record already exists for the date
+            if Attendance.objects.filter(date=date, course=course).exists():
+                return render(request, 'attendance/attendance.html', {'code': code, 'students': students, 'course': course, 'faculty': Faculty.objects.get(course=course), 'error': "Attendance record already exists for the date " + date})
             else:
-                dis.author = Faculty.objects.get(faculty_id=dis.sent_by_id)
-    except:
+                for student in students:
+                    attendance = Attendance(
+                        student=student, course=course, date=date, status=False)
+                    attendance.save()
 
-        discussions = []
-
-    return discussions
-
-
-def discussion(request, code):
-    if is_student_authorised(request, code):
-        course = Course.objects.get(code=code)
-        student = Student.objects.get(student_id=request.session['student_id'])
-        discussions = context_list(course)
-        form = StudentDiscussionForm()
-        context = {
-            'course': course,
-            'student': student,
-            'discussions': discussions,
-            'form': form,
-        }
-        return render(request, 'discussion/discussion.html', context)
-
-    elif is_faculty_authorised(request, code):
-        course = Course.objects.get(code=code)
-        faculty = Faculty.objects.get(faculty_id=request.session['faculty_id'])
-        discussions = context_list(course)
-        form = FacultyDiscussionForm()
-        context = {
-            'course': course,
-            'faculty': faculty,
-            'discussions': discussions,
-            'form': form,
-        }
-        return render(request, 'discussion/discussion.html', context)
+                messages.success(
+                    request, 'Attendance record created successfully for the date ' + date)
+                return redirect('/attendance/' + str(code))
+        else:
+            return redirect('/attendance/' + str(code))
     else:
         return redirect('std_login')
 
 
-def send(request, code, std_id):
-    if is_student_authorised(request, code):
-        if request.method == 'POST':
-            form = StudentDiscussionForm(request.POST)
-            if form.is_valid():
-                content = form.cleaned_data['content']
-                course = Course.objects.get(code=code)
-                try:
-                    student = Student.objects.get(student_id=std_id)
-                except:
-                    return redirect('discussion', code=code)
-                StudentDiscussion.objects.create(
-                    content=content, course=course, sent_by=student)
-                return redirect('discussion', code=code)
-            else:
-                return redirect('discussion', code=code)
-        else:
-            return redirect('discussion', code=code)
-    else:
-        return render(request, 'std_login.html')
-
-
-def send_fac(request, code, fac_id):
+def loadAttendance(request, code):
     if is_faculty_authorised(request, code):
         if request.method == 'POST':
-            form = FacultyDiscussionForm(request.POST)
-            if form.is_valid():
-                content = form.cleaned_data['content']
-                course = Course.objects.get(code=code)
-                try:
-                    faculty = Faculty.objects.get(faculty_id=fac_id)
-                except:
-                    return redirect('discussion', code=code)
-                FacultyDiscussion.objects.create(
-                    content=content, course=course, sent_by=faculty)
-                return redirect('discussion', code=code)
+            date = request.POST['date']
+            course = Course.objects.get(code=code)
+            students = Student.objects.filter(course__code=code)
+            attendance = Attendance.objects.filter(course=course, date=date)
+            # check if attendance record exists for the date
+            if attendance.exists():
+                return render(request, 'attendance/attendance.html', {'code': code, 'students': students, 'course': course, 'faculty': Faculty.objects.get(course=course), 'attendance': attendance, 'date': date})
             else:
-                return redirect('discussion', code=code)
-        else:
-            return redirect('discussion', code=code)
+                return render(request, 'attendance/attendance.html', {'code': code, 'students': students, 'course': course, 'faculty': Faculty.objects.get(course=course), 'error': 'Could not load. Attendance record does not exist for the date ' + date})
+
     else:
-        return render(request, 'std_login.html')
+        return redirect('std_login')
+
+
+def submitAttendance(request, code):
+    if is_faculty_authorised(request, code):
+        try:
+            students = Student.objects.filter(course__code=code)
+            course = Course.objects.get(code=code)
+            if request.method == 'POST':
+                date = request.POST['datehidden']
+                for student in students:
+                    attendance = Attendance.objects.get(
+                        student=student, course=course, date=date)
+                    if request.POST.get(str(student.student_id)) == '1':
+                        attendance.status = True
+                    else:
+                        attendance.status = False
+                    attendance.save()
+                messages.success(
+                    request, 'Attendance record submitted successfully for the date ' + date)
+                return redirect('/attendance/' + str(code))
+
+            else:
+                return render(request, 'attendance/attendance.html', {'code': code, 'students': students, 'course': course, 'faculty': Faculty.objects.get(course=course)})
+        except:
+            return render(request, 'attendance/attendance.html', {'code': code, 'error': "Error! could not save", 'students': students, 'course': course, 'faculty': Faculty.objects.get(course=course)})

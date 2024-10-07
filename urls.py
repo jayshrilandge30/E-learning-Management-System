@@ -2,7 +2,9 @@ from django.urls import path
 from . import views
 
 urlpatterns = [
-    path('discussion/<int:code>', views.discussion, name='discussion'),
-    path('send/<int:code>/<int:std_id>', views.send, name='send'),
-    path('message/<int:code>/<int:fac_id>', views.send_fac, name='send_fac'),
+    path('attendance/<int:code>', views.attendance, name='attendance'),
+    path('createRecord/<int:code>', views.createRecord, name='createRecord'),
+    path('submitAttendance/<int:code>',
+         views.submitAttendance, name='submitAttendance'),
+    path('loadAttendance/<int:code>', views.loadAttendance, name='loadAttendance'),
 ]

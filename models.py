@@ -1,38 +1,32 @@
 from django.db import models
-from main.models import Student, Faculty, Course
+from main.models import Student, Course
+
+# Create your models here.
 
 
-class StudentDiscussion(models.Model):
-    content = models.TextField(max_length=1600, null=False)
-    course = models.ForeignKey(
-        Course, on_delete=models.CASCADE, related_name='discussions')
-    sent_by = models.ForeignKey(
-        Student, on_delete=models.CASCADE, related_name='discussions')
-    sent_at = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        ordering = ['-sent_at']
-
-    def __str__(self):
-        return self.content[:30]
-
-    def time(self):
-        return self.sent_at.strftime("%d-%b-%y, %I:%M %p")
-
-
-class FacultyDiscussion(models.Model):
-    content = models.TextField(max_length=1600, null=False)
-    course = models.ForeignKey(
-        Course, on_delete=models.CASCADE, related_name='courseDiscussions')
-    sent_by = models.ForeignKey(
-        Faculty, on_delete=models.CASCADE, related_name='courseDiscussions')
-    sent_at = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        ordering = ['-sent_at']
+class Attendance(models.Model):
+    student = models.ForeignKey(Student, on_delete=models.CASCADE)
+    course = models.ForeignKey(Course, on_delete=models.CASCADE)
+    date = models.DateField(null=False, blank=False)
+    status = models.BooleanField(default=False, blank=False, null=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return self.content[:30]
+        return self.student.name + ' - ' + self.course.name + ' - ' + self.date.strftime('%d-%m-%Y')
 
-    def time(self):
-        return self.sent_at.strftime("%d-%b-%y, %I:%M %p")
+    def total_absent(self):
+        attendance = Attendance.objects.filter(
+            student=self.student, status=False).count()
+        if attendance == 0:
+            return attendance
+        else:
+            return attendance - 1
+
+    def total_present(self):
+        present = Attendance.objects.filter(
+            student=self.student, status=True).count()
+        if present == 0:
+            return present
+        else:
+            return present - 1
